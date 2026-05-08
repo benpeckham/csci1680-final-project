@@ -44,11 +44,8 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	// ---------------------------------------------
 
-	// load blocked domains
-	blockedDomains := getBlockedDomains()
-
 	// start proxy server in goroutine
-	go startProxyServer("127.0.0.1:8080", blockedDomains)
+	go startProxyServer("127.0.0.1:8080")
 
 	// ---------------------------------------------
 	<-sigChan
@@ -56,7 +53,7 @@ func main() {
 
 }
 
-func startProxyServer(listenAddr string, blockedDomains map[string]bool) {
+func startProxyServer(listenAddr string) {
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		log.Fatalf("Failed to start listener: %v", err)
@@ -71,27 +68,20 @@ func startProxyServer(listenAddr string, blockedDomains map[string]bool) {
 		}
 
 		// handle connection asynchronously
-		go handleConnection(conn, blockedDomains)
-	}
-}
-
-// hardcoded list of domains to block
-// using a map for O(1) lookup
-func getBlockedDomains() map[string]bool {
-	return map[string]bool{
-		"youtube.com":     true,
-		"www.youtube.com": true,
-		"m.youtube.com":   true,
-		"youtu.be":        true,
+		go handleConnection(conn)
 	}
 }
 
 // Returns true if the domain is on the exact blocklist or matches pattern
-func isBlocked(domain string, exact map[string]bool) bool {
-	if exact[domain] {
+func isBlocked(domain string) bool {
+
+	if strings.Contains(strings.ToLower(domain), "youtube.com") {
 		return true
 	}
-	return strings.Contains(strings.ToLower(domain), "youtube.com")
+	if strings.Contains(strings.ToLower(domain), "googlevideo.com") {
+		return true
+	}
+	return false
 }
 
 /*
@@ -103,7 +93,7 @@ Solution:
   - the reader is apart of the readOnlyConn, so read bytes aren't deleted from the socket's buffer
   - we can now check the domain name and block the connection if necessary
 */
-func handleConnection(conn net.Conn, blockedDomains map[string]bool) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	// peek the client hello
@@ -121,7 +111,7 @@ func handleConnection(conn net.Conn, blockedDomains map[string]bool) {
 	}
 
 	// consult blocklist
-	if isBlocked(domain, blockedDomains) {
+	if isBlocked(domain) {
 		log.Printf("[BLOCKED] Dropping connection to %s", domain)
 		return
 	}
