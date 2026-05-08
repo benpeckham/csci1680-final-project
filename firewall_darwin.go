@@ -1,4 +1,4 @@
-package csci1680finalproject
+package main
 
 import (
 	"bytes"
