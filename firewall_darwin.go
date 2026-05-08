@@ -17,8 +17,8 @@ func setupFirewall() {
 	// Rule 2: Intercept traffic arriving on lo0 port 443 and forward to proxy on 8080.
 	// Rule 3: Block UDP/443 to prevent QUIC, forcing browsers onto TCP TLS.
 	rules := `
-pass out route-to lo0 inet proto tcp from any to any port 443 user != root
 rdr pass on lo0 inet proto tcp from any to any port 443 -> 127.0.0.1 port 8080
+pass out route-to lo0 inet proto tcp from any to any port 443 user != root
 block drop out proto udp to any port 443
 `
 	cmd := exec.Command("pfctl", "-E", "-f", "-")
