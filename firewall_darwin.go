@@ -11,10 +11,11 @@ import (
 func setupFirewall() {
 	log.Println("Configuring macOS pf firewall...")
 
-	// Rule 1: Redirect TCP 443 to our proxy
+	// Rule 1: Redirect TCP 443 to our proxy (non-root only).
+	// Without user != root, the proxy's own outbound TLS (running as root) would be redirected back to 8080.
 	// Rule 2: Block UDP 443 entirely to drop QUIC connections
 	rules := `
-		rdr pass on en0 inet proto tcp from any to any port 443 -> 127.0.0.1 port 8080
+		rdr pass on en0 inet proto tcp from any user != root to any port 443 -> 127.0.0.1 port 8080
 		block drop out proto udp to any port 443
 		`
 	cmd := exec.Command("pfctl", "-E", "-f", "-")

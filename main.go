@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -35,6 +36,7 @@ func main() {
 	// apply firewall rules
 	// firewall tells the OS to redirect all traffic to the proxy server
 	setupFirewall()
+	defer cleanupFirewall()
 
 	// AI generated code to ensure safe shutdown
 	// ---------------------------------------------
@@ -50,7 +52,6 @@ func main() {
 
 	// ---------------------------------------------
 	<-sigChan
-	cleanupFirewall()
 	// ---------------------------------------------
 
 }
@@ -85,6 +86,14 @@ func getBlockedDomains() map[string]bool {
 	}
 }
 
+// Returns true if the domain is on the exact blocklist or matches pattern
+func isBlocked(domain string, exact map[string]bool) bool {
+	if exact[domain] {
+		return true
+	}
+	return strings.Contains(strings.ToLower(domain), "youtube.com")
+}
+
 /*
 Problem: if you read a byte from a TCP socket, it is deleted from the socket's buffer
 Solution:
@@ -112,7 +121,7 @@ func handleConnection(conn net.Conn, blockedDomains map[string]bool) {
 	}
 
 	// consult blocklist
-	if blockedDomains[domain] {
+	if isBlocked(domain, blockedDomains) {
 		log.Printf("[BLOCKED] Dropping connection to %s", domain)
 		return
 	}
