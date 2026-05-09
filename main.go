@@ -47,6 +47,9 @@ func main() {
 	// start proxy server in goroutine
 	go startProxyServer("127.0.0.1:8080")
 
+	// start QUIC inspector: reads UDP/443 packets from NFQUEUE and drops only QUIC
+	go startQUICInspector()
+
 	// ---------------------------------------------
 	<-sigChan
 	// ---------------------------------------------

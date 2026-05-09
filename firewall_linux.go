@@ -20,12 +20,13 @@ func setupFirewall() {
 		log.Fatalf("Failed to set TCP intercept rule: %v", err)
 	}
 
-	// 2. Drop all outgoing UDP traffic on port 443 to drop QUIC connections
-	cmdUDP := exec.Command("iptables", "-A", "OUTPUT", "-p", "udp", "--dport", "443", "-j", "DROP")
+	// 2. Send outgoing UDP/443 to NFQUEUE queue 0 so the Go QUIC inspector can
+	//    inspect the first byte and only drop actual QUIC packets.
+	cmdUDP := exec.Command("iptables", "-A", "OUTPUT", "-p", "udp", "--dport", "443", "-j", "NFQUEUE", "--queue-num", "0")
 	if err := cmdUDP.Run(); err != nil {
 		// If the second rule fails, try to clean up the first one
 		cleanupFirewall()
-		log.Fatalf("Failed to set UDP drop rule: %v", err)
+		log.Fatalf("Failed to set UDP NFQUEUE rule: %v", err)
 	}
 }
 
@@ -50,7 +51,11 @@ func cleanupFirewall() {
 		"-p", "tcp", "--dport", "443",
 		"-j", "REDIRECT", "--to-ports", "8080")
 
-	// UDP/443 DROP from setupFirewall was never removed before; leftover breaks QUIC / some stacks.
+	// Remove UDP/443 NFQUEUE rule installed by setupFirewall.
+	removeUntilGone("iptables", "-D", "OUTPUT",
+		"-p", "udp", "--dport", "443",
+		"-j", "NFQUEUE", "--queue-num", "0")
+	// Also remove any legacy DROP rule in case it was left from an older run.
 	removeUntilGone("iptables", "-D", "OUTPUT",
 		"-p", "udp", "--dport", "443",
 		"-j", "DROP")
