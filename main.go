@@ -72,7 +72,7 @@ func startProxyServer(listenAddr string) {
 	}
 }
 
-// Returns true if the domain is on the exact blocklist or matches pattern
+// hardcoded domains for now
 func isBlocked(domain string) bool {
 
 	if strings.Contains(strings.ToLower(domain), "youtube.com") {
@@ -90,8 +90,9 @@ Solution:
   - browser sends client hello to our proxy
   - we wrap the connection in a readOnlyConn that simulates a broken pipe when written to
   - we simultaneously read the client hello and store the domain name
-  - the reader is apart of the readOnlyConn, so read bytes aren't deleted from the socket's buffer
   - we can now check the domain name and block the connection if necessary
+  - if domain is allowed, we prepend the client hello to the socket's buffer
+  - we can now route the connection to the destination server
 */
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
